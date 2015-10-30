@@ -1,0 +1,3 @@
+Download existing test sheet from shared drive.
+Update the config file with the sheet's name which you need to run.
+In the sheet, you might need to change the ip of the server under test.
