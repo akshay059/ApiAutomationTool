@@ -103,8 +103,8 @@ public class GeneralTest {
 				throw new SkipException("Test not marked for execution.");
 			}
 
-			System.out.println(testDesc);
-			log.info(testDesc);
+			System.out.println(tcId + "----" + testDesc);
+			log.info(tcId + "----" + testDesc);
 			log.info("URL: " + url);
 			log.info("Verb : " + verb);
 
