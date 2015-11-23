@@ -125,7 +125,15 @@ public class GeneralTest {
 					String[] kvP = p.split("=");
 					String value = null;
 					try {
-						value = StrSubstitutor.replace(kvP[1], templateVars);
+						if (kvP.length == 2){
+							value = kvP[1];
+						} else {
+							value = "";
+						}
+						if (value != "") {
+							value = StrSubstitutor
+									.replace(kvP[1], templateVars);
+						}
 					} catch (ArrayIndexOutOfBoundsException aiobe) {
 						System.out
 								.println("Skipped : wrong param details, format is wrong.");
@@ -197,11 +205,11 @@ public class GeneralTest {
 				responseBodies.put(tcId, resBody);
 				responseHeaders.put(tcId, resHeaders);
 				System.out
-				.println("---------------------ended-passed--------------");
+						.println("---------------------ended-passed--------------");
 				log.info("---------------------ended-passed--------------");
-			} else{
+			} else {
 				System.out
-				.println("<<<<<<<<<<<<<<<<<<<<<ended-failed>>>>>>>>>>>>>>>");
+						.println("<<<<<<<<<<<<<<<<<<<<<ended-failed>>>>>>>>>>>>>>>");
 				log.info("<<<<<<<<<<<<<<<<<<<<<ended-failed>>>>>>>>>>>>>>>");
 			}
 		}
