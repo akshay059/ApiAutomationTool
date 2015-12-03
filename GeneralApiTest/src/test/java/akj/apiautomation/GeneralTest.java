@@ -1,5 +1,6 @@
 package akj.apiautomation;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
@@ -114,91 +115,106 @@ public class GeneralTest {
 
 			templateVars = extractVarPreStepHeader(preStepRefHeaders, tcId,
 					templateVars);
+			
+			// If http is in url execute rest api calls and test.
 
-			ClientResponse res = null;
-			WebResource webResource = client.resource(url);
+			if (url.indexOf("http") == 0) {
 
-			log.info("Params : ");
-			String[] pArr = params.split("&");
-			for (String p : pArr) {
-				if (!p.equals("")) {
-					String[] kvP = p.split("=");
-					String value = null;
-					try {
-						if (kvP.length == 2){
-							value = kvP[1];
-						} else {
-							value = "";
+				ClientResponse res = null;
+				WebResource webResource = client.resource(url);
+
+				log.info("Params : ");
+				String[] pArr = params.split("&");
+				for (String p : pArr) {
+					if (!p.equals("")) {
+						String[] kvP = p.split("=");
+						String value = null;
+						try {
+							if (kvP.length == 2) {
+								value = kvP[1];
+							} else {
+								value = "";
+							}
+							if (value != "") {
+								value = StrSubstitutor.replace(kvP[1],
+										templateVars);
+							}
+						} catch (ArrayIndexOutOfBoundsException aiobe) {
+							System.out
+									.println("Skipped : wrong param details, format is wrong.");
+							throw new SkipException(
+									"wrong param details, format is wrong.");
 						}
-						if (value != "") {
+
+						log.info(kvP[0] + " : " + value);
+
+						webResource = webResource.queryParam(kvP[0], value);
+					}
+				}
+				Builder req = webResource.header("Content-Type",
+						MediaType.APPLICATION_JSON);
+
+				log.info("Request Headers : ");
+
+				String[] hArr = headers.split(",");
+				for (String p : hArr) {
+					if (!p.equals("")) {
+						String[] kvP = p.split("=");
+						String value = null;
+						try {
 							value = StrSubstitutor
 									.replace(kvP[1], templateVars);
+						} catch (ArrayIndexOutOfBoundsException aiobe) {
+							System.out
+									.println("Skipped : wrong header details, format is wrong.");
+							throw new SkipException(
+									"wrong header details, format is wrong.");
 						}
-					} catch (ArrayIndexOutOfBoundsException aiobe) {
-						System.out
-								.println("Skipped : wrong param details, format is wrong.");
-						throw new SkipException(
-								"wrong param details, format is wrong.");
+
+						log.info(kvP[0] + " : " + value);
+
+						req = req.header(kvP[0], value);
 					}
+				}
 
-					log.info(kvP[0] + " : " + value);
+				body = StrSubstitutor.replace(body, templateVars);
 
-					webResource = webResource.queryParam(kvP[0], value);
+				log.info("Body: " + body);
+
+				if (verb.equalsIgnoreCase("GET")) {
+					res = req.get(ClientResponse.class);
+				} else if (verb.equalsIgnoreCase("POST")) {
+					res = req.post(ClientResponse.class, body);
+				} else if (verb.equalsIgnoreCase("PUT")) {
+					res = req.put(ClientResponse.class, body);
+				} else if (verb.equalsIgnoreCase("DELETE")) {
+					res = req.delete(ClientResponse.class);
+				}
+
+				log.info("Status : " + res.getStatus());
+				log.info("St Exp : " + resStatusExp);
+				resHeaders = res.getHeaders();
+				log.info("Headers : " + resHeaders);
+				resBody = res.getEntity(String.class);
+				log.info("Output : " + resBody);
+				log.info("Op Exp : " + resBodyExp);
+
+				resBodyExp = StrSubstitutor.replace(resBodyExp, templateVars);
+
+				Assert.assertEquals(res.getStatus(),
+						(int) Float.parseFloat(resStatusExp), testDesc);
+				Assert.assertTrue(
+						JsonComparer.compareJson(resBody, resBodyExp), testDesc);
+			} else if (url.indexOf("ssh") == 0){
+				// If url has ssh then run command using ssh. The URL is the command that needs to be run.
+				try {
+					SSHUtils.execute(url);
+				} catch (IOException e) {
+					throw new SkipException("command : " + url + " can't be run");
 				}
 			}
-			Builder req = webResource.header("Content-Type",
-					MediaType.APPLICATION_JSON);
-
-			log.info("Request Headers : ");
-
-			String[] hArr = headers.split(",");
-			for (String p : hArr) {
-				if (!p.equals("")) {
-					String[] kvP = p.split("=");
-					String value = null;
-					try {
-						value = StrSubstitutor.replace(kvP[1], templateVars);
-					} catch (ArrayIndexOutOfBoundsException aiobe) {
-						System.out
-								.println("Skipped : wrong header details, format is wrong.");
-						throw new SkipException(
-								"wrong header details, format is wrong.");
-					}
-
-					log.info(kvP[0] + " : " + value);
-
-					req = req.header(kvP[0], value);
-				}
-			}
-
-			body = StrSubstitutor.replace(body, templateVars);
-
-			log.info("Body: " + body);
-
-			if (verb.equalsIgnoreCase("GET")) {
-				res = req.get(ClientResponse.class);
-			} else if (verb.equalsIgnoreCase("POST")) {
-				res = req.post(ClientResponse.class, body);
-			} else if (verb.equalsIgnoreCase("PUT")) {
-				res = req.put(ClientResponse.class, body);
-			} else if (verb.equalsIgnoreCase("DELETE")) {
-				res = req.delete(ClientResponse.class);
-			}
-
-			log.info("Status : " + res.getStatus());
-			log.info("St Exp : " + resStatusExp);
-			resHeaders = res.getHeaders();
-			log.info("Headers : " + resHeaders);
-			resBody = res.getEntity(String.class);
-			log.info("Output : " + resBody);
-			log.info("Op Exp : " + resBodyExp);
-
-			resBodyExp = StrSubstitutor.replace(resBodyExp, templateVars);
-
-			Assert.assertEquals(res.getStatus(),
-					(int) Float.parseFloat(resStatusExp), testDesc);
-			Assert.assertTrue(JsonComparer.compareJson(resBody, resBodyExp),
-					testDesc);
+			
+			
 			testStatus = true;
 		} finally {
 			if (testStatus) {
